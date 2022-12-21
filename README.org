@@ -1,0 +1,180 @@
+#+TITLE: abbrev-hook
+
+[[https://github.com/xFA25E/abbrev-hook/actions/workflows/test.yml/badge.svg]]
+
+
+This package allows easy definition of abbrev hooks for major modes.  It defines
+a separate abbrev table with regexps that support non word characters in abbrev
+names.
+
+* Usage
+
+#+begin_src elisp
+(abbrev-hook-define
+ "if" 'js-mode
+ (tempo-define-template
+  "js-if"
+  '("if (" p ") {" n>
+    r> n>
+    "}" >)))
+#+end_src
+
+To define abbrev hooks you can use ~abbrev-hook-define~ function.  You just need
+to provide a name, a major mode and a hook that will be called on abbrev
+expansion.
+
+For automatic expansion to work you have to have ~abbrev-mode~ enabled, of
+course.  Otherwise, you can use them semi-automatically with ~expand-abbrev~
+(which is usually bind to =C-x '=).
+
+You can also call hooks by name with completion with ~abbrev-hook-call~.
+
+** Tips
+
+*** Example configuration
+
+#+begin_src elisp
+(with-eval-after-load 'abbrev-hook
+  (define-key global-map "\C-z" 'abbrev-hook-call))
+
+(with-eval-after-load 'lisp-mode
+  (require 'abbrev-hook)
+  (abbrev-hook-define
+   "let" 'lisp-mode
+   (tempo-define-template
+    "lisp-let"
+    '("(let (" p ")" n>
+      r> ")"))))
+#+end_src
+
+*** Solutions for problems with abbrev expansion in Lisp modes
+
+Lisp languages are notoriuos for having non-word charcters in their symbols and
+abbrev is not very well versed in the domain of non-word characters.
+
+/abbrev-hook/ tries to mitigate this problem by adding a custom regexp for its
+abbrev tables and solves the issue of having non-word characters inside the
+symbols.  The following are the solutions for a problem of having non-word
+characters at the end of the symbols.
+
+**** Disable expansion on non space characters for Lisp modes
+
+This solution will enable automatic expansion only on space or explicit call to
+~expand-abbrev~.  I'm, personally, using this one.  Works pretty well.
+
+#+begin_src elisp
+(cl-flet ((enable () (or (eq this-command 'expand-abbrev)
+                         (eql ?\s last-command-event))))
+  (dolist (mode '(lisp-mode emacs-lisp-mode))
+    (let ((table (abbrev-hook-abbrev-table mode)))
+      (define-abbrev-table table nil nil :enable-function #'enable))))
+#+end_src
+
+**** Modify syntax for some characters to make them word characters
+
+This solution will treat ~some-long-symbol*~ as a single word.  You can change
+only ~*~ character, but in that case ~let-~ will trigger ~let~.
+
+#+begin_src elisp
+(defun modify-lisp-syntax-tables ()
+  (modify-syntax-entry ?* "w" (syntax-table))
+  (modify-syntax-entry ?- "w" (syntax-table)))
+
+(dolist (hook '(lisp-mode-hook emacs-lisp-mode-hook))
+  (add-hook hook #'modify-lisp-syntax-tables))
+#+end_src
+
+**** Bind expand-abbrev on some key
+
+See the last section of [[https://www.emacswiki.org/emacs/AbbrevMode#h5o-11][this]] link.
+
+*** Definition for multiple mode
+
+Since ~abbrev-hook-define~ is a function, you can do it like this.
+
+#+begin_src elisp
+(dolist (mode '(js-mode c-mode php-mode))
+  (abbrev-hook-define "if" mode
+    '("if (" p ") {" n>
+      r> n>
+      "}" >)))
+#+end_src
+
+This is very stupid and simple, but effective.
+
+* Installation
+
+** Nix
+This repo is a nix flake.  You can just add ~overlays.default~ output to your
+nixpkgs overlays.
+
+#+begin_src nix
+{
+  inputs.abbrev-hook.url = "github:xFA25E/abbrev-hook";
+  outputs = { self, abbrev-hook, nixpkgs }: let
+    pkgs = import nixpkgs {
+      system = "your-system";
+      overlays = [ abbrev-hook.overlays.default ];
+    };
+  in {
+    # YOUR OUTPUTS
+  };
+}
+#+end_src
+
+** Package manager
+
+If you've installed it with your package manager, you're done.
+
+** Manual
+
+Put /abbrev-hook.el/ in your load-path, and put the following in a file where
+you want to define templates:
+
+#+begin_src elisp
+(require 'abbrev-hook)
+#+end_src
+
+* Rationale
+
+This package, for the most part, is a rethinking of the original [[https://github.com/xFA25E/skempo][skempo]] package.
+Since it was born, 2 years ago, I was experimenting with various templating
+setups, got a pretty decent workflow and learned a couple of things.
+
+I hope that, one day, something like /abbrev-hook/ ends up being in Emacs core
+and tempo becomes more popular.  Who knows, maybe we could outcompete Yasnippet.
+
+** Tempo tags are not worth it (at least for now)
+
+I think they are unfinished.  They are not very convinient to use for the end
+user and necessitate a large infrustracture if you wish to have inheritance
+for templates by mode.
+
+Maybe they were intended to be used by mode authors, but they are not very
+popular there either.  A search for /tempo-use-tag-list/ on GitHub gives custom
+configurations with manual definition of /tag-lists/ and hooks for modes which
+load these /tag-lists/.
+
+** Abbrevs are great
+
+They are very good at what tempo tags tries to achieve.  I think the automatic
+expansion on non-word characters is better than the manual trigger by a
+key-chord.  Indeed, during these 2 years, I never used tempo tags.  I just typed
+"if", pressed space and abbrev handled the expansion automagically.  I think
+that this approach is much better and intuitive.
+
+Plus, if you bind abbrevs to keywords of your programming language, you don't
+have to remember the templates that you've defined.
+
+** Tempo is much more extensible than skeleton
+
+We should deprecate skeletons in favor of tempo.  Tempo supports user elements
+with which you can implement all the looping and conditional features of
+skeleton (and more).  We don't need two templating systems in Emacs.  Also, I
+slightly prefer the tempo language to skeleton one.
+
+* Development
+Bug reports, feature requests and suggestions are, of course, welcome!
+
+* License
+GPLv3
