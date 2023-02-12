@@ -7,6 +7,8 @@ This package allows easy definition of abbrev hooks for major modes.  It defines
 a separate abbrev table with regexps that support non word characters in abbrev
 names.
 
+You might be interested in [[https://github.com/xFA25E/tempo-extra][tempo-extra]], too.
+
 * Usage
 
 #+begin_src elisp
@@ -93,11 +95,13 @@ See the last section of [[https://www.emacswiki.org/emacs/AbbrevMode#h5o-11][thi
 Since ~abbrev-hook-define~ is a function, you can do it like this.
 
 #+begin_src elisp
-(dolist (mode '(js-mode c-mode php-mode))
-  (abbrev-hook-define "if" mode
-    '("if (" p ") {" n>
-      r> n>
-      "}" >)))
+(let ((template (tempo-define-template
+                 "js-c-php-if"
+                 '("if (" p ") {" n>
+                   r> n>
+                   "}" >))))
+  (dolist (mode '(js-mode c-mode php-mode))
+    (abbrev-hook-define "if" mode template)))
 #+end_src
 
 This is very stupid and simple, but effective.
