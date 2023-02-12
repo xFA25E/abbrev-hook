@@ -58,6 +58,7 @@
 
 ;; (with-eval-after-load 'lisp-mode
 ;;   (require 'abbrev-hook)
+;;   (require 'tempo)
 ;;   (abbrev-hook-define
 ;;    "let" 'lisp-mode
 ;;    (tempo-define-template
